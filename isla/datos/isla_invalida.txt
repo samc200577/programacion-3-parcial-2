@@ -1,0 +1,8 @@
+# mapa con errores para probar la validación
+~ ~ ~ ~ C ~ ~
+~ P C C C C ~
+~ R T T T C ~
+~ D C T C ~
+~ R T P A X ~
+~ C D C C C ~
+~ ~ ~ ~ ~ ~ ~

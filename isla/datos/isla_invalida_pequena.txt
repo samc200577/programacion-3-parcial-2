@@ -1,0 +1,5 @@
+# caso pequeño inválido para la prueba de escritorio de la validación
+~ ~ ~ ~
+~ P X ~
+~ P ~
+~ ~ ~ ~
