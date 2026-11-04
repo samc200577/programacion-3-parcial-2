@@ -1,0 +1,4 @@
+Línea 8: 0 -> debe ser un entero positivo
+Línea 9: -3 -> debe ser un entero positivo
+Línea 10: abc -> no es un número entero
+Línea 11: 4.5 -> no es un número entero
