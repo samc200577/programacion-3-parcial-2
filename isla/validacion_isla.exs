@@ -1,23 +1,27 @@
 defmodule ValidacionIsla do
   @moduledoc """
-  Validación previa del mapa de la isla, hecha solo con funciones recursivas
-  propias (sin `Enum`, `Stream` ni comprensiones `for`).
+  Módulo encargado de la validación previa del mapa de la isla, hecha solo con funciones
+  recursivas propias (sin `Enum`, `Stream` ni comprensiones `for`).
 
   Revisa que:
   - todas las filas tengan el mismo número de posiciones que la fila 0;
   - todos los símbolos aparezcan en `terrenos.csv`;
   - haya exactamente una posición inicial y exactamente un bote;
   - todo el borde del mapa sea agua.
+
+  Si alguna condición falla, se reportan todos los problemas encontrados, no solo el primero.
   """
 
   @doc """
-  Valida `filas` (lista de listas de símbolos).
+  Valida `filas`, que es la lista de filas del mapa (cada fila es una lista de símbolos).
 
   `terrenos` es el mapa `simbolo => %Terreno{}` y `especiales` indica qué símbolo
   representa el inicio, el bote y el agua (`%{inicio: "P", bote: "B", agua: "~"}`),
   valores que también salen de `terrenos.csv`.
 
-  Devuelve `:ok` o `{:error, problemas}` con todos los problemas encontrados.
+  Devuelve `:ok` si el mapa es válido, o `{:error, problemas}` con la lista de todos los
+  problemas encontrados, en este orden: filas con otro ancho, problemas de cada posición
+  (símbolos desconocidos y borde sin agua), cantidad de inicios y cantidad de botes.
   """
   def validar([], _terrenos, _especiales), do: {:error, ["El mapa está vacío"]}
 
@@ -43,6 +47,9 @@ defmodule ValidacionIsla do
 
   # --- Filas con distinto número de posiciones ---
 
+  # Recorre las filas y compara la cantidad de posiciones de cada una con `esperado`
+  # (el ancho de la fila 0). Devuelve un mensaje por cada fila que no coincide.
+  # `indice` es el número de la fila actual, que empieza en 0.
   defp revisar_anchos([], _indice, _esperado), do: []
 
   defp revisar_anchos([fila | resto], indice, esperado) do
@@ -58,6 +65,9 @@ defmodule ValidacionIsla do
 
   # --- Recorrido de filas y columnas ---
 
+  # Recorre las filas del mapa una por una y, para cada una, revisa sus columnas.
+  # `acumulado` es la tupla {problemas, inicios, botes}, que se va pasando de fila en fila.
+  # La última columna se calcula para cada fila, porque las filas pueden tener otro ancho.
   defp revisar_filas([], _fila, _contexto, acumulado), do: acumulado
 
   defp revisar_filas([simbolos | resto], fila, contexto, acumulado) do
@@ -66,6 +76,11 @@ defmodule ValidacionIsla do
     revisar_filas(resto, fila + 1, contexto, acumulado)
   end
 
+  # Revisa cada posición de una fila:
+  # - si el símbolo no existe en terrenos.csv, agrega un problema;
+  # - si la posición está en el borde y no es agua, agrega un problema;
+  # - si es el inicio o el bote, guarda su posición para contarlos después.
+  # Los problemas y las posiciones se agregan al inicio de cada lista (quedan al revés).
   defp revisar_columnas([], _fila, _columna, _ultima, _contexto, acumulado), do: acumulado
 
   defp revisar_columnas([simbolo | resto], fila, columna, ultima, contexto, {problemas, inicios, botes}) do
@@ -98,6 +113,10 @@ defmodule ValidacionIsla do
 
   # --- Exactamente una posición inicial y un bote ---
 
+  # Revisa que la lista de posiciones tenga exactamente un elemento, usando pattern matching:
+  # - un elemento: correcto, no hay problemas;
+  # - lista vacía: "No hay <singular> <símbolo>";
+  # - varios elementos: "Hay N <plural> <símbolo>: <posiciones>".
   defp revisar_cantidad([_unica], _singular, _plural, _simbolo), do: []
   defp revisar_cantidad([], singular, _plural, simbolo), do: ["No hay #{singular} #{simbolo}"]
 
@@ -107,14 +126,19 @@ defmodule ValidacionIsla do
 
   # --- Funciones auxiliares recursivas ---
 
-  @doc "Cuenta los elementos de una lista."
+  @doc """
+  Cuenta los elementos de una lista de forma recursiva (reemplaza a `length/1`).
+  """
   def contar([]), do: 0
   def contar([_ | resto]), do: 1 + contar(resto)
 
+  # Invierte una lista pasando cada elemento al inicio del acumulador
+  # (reemplaza a Enum.reverse/1). Se llama con el acumulador vacío: invertir(lista, []).
   defp invertir([], acumulado), do: acumulado
   defp invertir([cabeza | resto], acumulado), do: invertir(resto, [cabeza | acumulado])
 
-  # {1,1} y {4,3}  /  {1,1}, {2,2} y {4,3}
+  # Une una lista de posiciones como texto, separadas por comas y con "y" antes de la última
+  # (reemplaza a Enum.join/2). Ejemplos: "{1,1} y {4,3}" o "{1,1}, {2,2} y {4,3}".
   defp unir_posiciones([ultima]), do: Ruta.posicion_texto(ultima)
   defp unir_posiciones([a, b]), do: "#{Ruta.posicion_texto(a)} y #{Ruta.posicion_texto(b)}"
   defp unir_posiciones([a | resto]), do: "#{Ruta.posicion_texto(a)}, #{unir_posiciones(resto)}"

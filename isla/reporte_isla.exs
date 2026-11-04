@@ -1,12 +1,21 @@
 defmodule ReporteIsla do
   @moduledoc """
-  Genera las líneas del resumen: total de rutas, ruta(s) más corta(s), ruta de menor
-  costo y el mapa con la ruta de menor costo marcada con `*`.
+  Módulo encargado de generar las líneas del resumen de la búsqueda: total de rutas,
+  ruta o rutas más cortas, ruta de menor costo y el mapa con la ruta de menor costo
+  marcada con `*`.
+
+  Las mismas líneas se muestran en pantalla y se escriben en `resumen_isla.txt`.
   """
 
   @doc """
-  `numeradas` es la lista de pares `{%Ruta{}, numero}`.
-  Devuelve una lista de líneas que se muestran en pantalla y se escriben en el archivo.
+  Genera las líneas del resumen.
+
+  `numeradas` es la lista de pares `{%Ruta{}, numero}`, `filas` es el mapa de la isla
+  (lista de filas de símbolos) y `especiales` son los símbolos de inicio, bote y agua
+  (se recibe para mantener la misma información que el resto del programa, aunque el
+  resumen no lo necesita).
+
+  Si no hay rutas, el resumen lo indica y muestra el mapa sin marcar.
   """
   def lineas_resumen([], filas, _especiales) do
     ["Número total de rutas: 0", "No existe ninguna ruta hasta el bote", "", "Mapa de la isla:"] ++
@@ -37,6 +46,9 @@ defmodule ReporteIsla do
       lineas_mapa(filas, posiciones_marcadas(mejor))
   end
 
+  # Genera las líneas de la ruta más corta: una línea con la cantidad de movimientos y los
+  # números de las rutas empatadas, y una línea por cada una con su costo y su recorrido.
+  # `por_numero` es el mapa numero => %Ruta{}.
   defp lineas_mas_corta(numeros, movimientos, por_numero) do
     ["Ruta más corta: #{movimientos} movimientos (#{texto_rutas(numeros)})"] ++
       Enum.map(numeros, fn numero ->
@@ -45,6 +57,8 @@ defmodule ReporteIsla do
       end)
   end
 
+  # Genera las líneas de la ruta de menor costo.
+  # Si hay una sola, muestra su costo, sus movimientos y su recorrido.
   defp lineas_menor_costo([numero], costo, por_numero) do
     ruta = Map.fetch!(por_numero, numero)
 
@@ -54,6 +68,7 @@ defmodule ReporteIsla do
     ]
   end
 
+  # Si hay empate, indica entre qué rutas y muestra los movimientos y el recorrido de cada una.
   defp lineas_menor_costo(numeros, costo, por_numero) do
     ["Ruta de menor costo: costo #{costo}, empatada entre #{texto_rutas(numeros)}"] ++
       Enum.map(numeros, fn numero ->
@@ -62,7 +77,8 @@ defmodule ReporteIsla do
       end)
   end
 
-  # Se marcan las posiciones intermedias; el inicio y el bote conservan su símbolo.
+  # Devuelve un MapSet con las posiciones que se marcan con * en el mapa: las posiciones
+  # intermedias de la ruta. El inicio y el bote conservan su símbolo para que se vean.
   defp posiciones_marcadas(%Ruta{posiciones: posiciones}) do
     posiciones
     |> Enum.drop(1)
@@ -70,6 +86,8 @@ defmodule ReporteIsla do
     |> MapSet.new()
   end
 
+  # Genera una línea de texto por cada fila del mapa, con los símbolos separados por un
+  # espacio. Las posiciones que están en `marcadas` se reemplazan por *.
   defp lineas_mapa(filas, marcadas) do
     filas
     |> Enum.with_index()
@@ -82,6 +100,8 @@ defmodule ReporteIsla do
     end)
   end
 
+  # Escribe los números de ruta como texto: "ruta 3" si es una sola,
+  # "rutas 1 y 2" o "rutas 1, 2 y 4" si son varias.
   defp texto_rutas([numero]), do: "ruta #{numero}"
 
   defp texto_rutas(numeros) do

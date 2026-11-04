@@ -17,8 +17,11 @@ Code.require_file("reporte_isla.exs", __DIR__)
 
 defmodule Isla do
   @moduledoc """
-  Punto de entrada del problema 2: lee los archivos, valida el mapa, busca las rutas
-  y genera `validacion_isla.txt`, `rutas_isla.csv` y `resumen_isla.txt`.
+  Punto de entrada del problema 2.
+
+  Orquesta el flujo completo: lee `terrenos.csv` y el mapa de la isla con Streams, valida
+  el mapa, busca todas las rutas hasta el bote y genera `validacion_isla.txt`,
+  `rutas_isla.csv` y `resumen_isla.txt` en la carpeta `resultados/`.
   """
 
   @resultados Path.join(__DIR__, "resultados")
@@ -27,6 +30,13 @@ defmodule Isla do
   # así ningún símbolo queda escrito en el código.
   @nombres_especiales %{inicio: "inicio", bote: "bote", agua: "agua"}
 
+  @doc """
+  Ejecuta el flujo principal del programa con los argumentos de la línea de comandos.
+
+  `args` puede estar vacío (usa los archivos de `datos/`), traer solo la ruta del mapa o
+  traer la ruta del mapa y la de `terrenos.csv`. Si algún paso falla (archivo inexistente,
+  terrenos inválidos o mapa inválido), muestra un mensaje de error y no sigue con los demás.
+  """
   def main(args) do
     {ruta_isla, ruta_terrenos} = rutas_entrada(args)
     Util.imprimir_mensaje("=== Escapar de la isla ===")
@@ -43,6 +53,8 @@ defmodule Isla do
     end
   end
 
+  # Obtiene las rutas del mapa y de terrenos.csv a partir de los argumentos.
+  # Si falta alguno, se usa el archivo correspondiente de la carpeta datos/.
   defp rutas_entrada([isla, terrenos | _]), do: {isla, terrenos}
   defp rutas_entrada([isla]), do: {isla, Path.join(__DIR__, "datos/terrenos.csv")}
 
@@ -52,8 +64,11 @@ defmodule Isla do
 
   # --- Lectura con Streams ---
 
-  # Cada línea se convierte en %Terreno{} de forma perezosa; el mapa simbolo => terreno
-  # solo se construye cuando el Enum.reduce consume el Stream.
+  # Lee terrenos.csv y devuelve {:ok, mapa} con el mapa simbolo => %Terreno{}.
+  # Cada línea se convierte en %Terreno{} de forma perezosa; el mapa solo se construye
+  # cuando el Enum.reduce consume el Stream. Las líneas mal formadas se muestran como
+  # error y se omiten. Devuelve {:error, mensaje} si el archivo no existe o si no queda
+  # ningún terreno válido.
   defp cargar_terrenos(ruta) do
     with {:ok, lineas} <- Archivos.leer_lineas(ruta) do
       {terrenos, errores} =
@@ -75,6 +90,9 @@ defmodule Isla do
     end
   end
 
+  # Busca en los terrenos el símbolo del inicio, del bote y del agua según su nombre.
+  # Devuelve {:ok, %{inicio: "P", bote: "B", agua: "~"}} (con los símbolos del archivo)
+  # o {:error, mensaje} si terrenos.csv no define alguno de los tres.
   defp simbolos_especiales(terrenos) do
     especiales =
       Map.new(@nombres_especiales, fn {clave, nombre} ->
@@ -91,8 +109,9 @@ defmodule Isla do
       else: {:ok, especiales}
   end
 
-  # Cada línea del mapa se separa en símbolos de forma perezosa; la lista de filas
-  # se construye al final con Enum.to_list.
+  # Lee el mapa de la isla y devuelve {:ok, filas}, donde cada fila es una lista de símbolos.
+  # Cada línea se separa en símbolos de forma perezosa; la lista de filas se construye al
+  # final con Enum.to_list. Devuelve {:error, mensaje} si el archivo no existe.
   defp cargar_isla(ruta) do
     with {:ok, lineas} <- Archivos.leer_lineas(ruta) do
       filas =
@@ -106,6 +125,9 @@ defmodule Isla do
 
   # --- Validación previa (recursiva) ---
 
+  # Valida el mapa con ValidacionIsla y escribe el resultado en validacion_isla.txt.
+  # Si el mapa es válido devuelve :ok; si no, muestra todos los problemas en pantalla y
+  # devuelve {:error, mensaje} para que main/1 no realice la búsqueda.
   defp validar_mapa(filas, terrenos, especiales) do
     ruta_salida = Path.join(@resultados, "validacion_isla.txt")
 
@@ -125,6 +147,9 @@ defmodule Isla do
 
   # --- Búsqueda y salidas ---
 
+  # Construye el mapa de terrenos, ubica el inicio y el bote, busca todas las rutas y genera
+  # las salidas: cada ruta en pantalla, rutas_isla.csv (una línea por ruta) y el resumen,
+  # que se muestra en pantalla y se escribe en resumen_isla.txt.
   defp resolver(filas, terrenos, especiales) do
     mapa = BusquedaIsla.construir_mapa(filas, terrenos)
     inicio = BusquedaIsla.ubicar(filas, especiales.inicio)
